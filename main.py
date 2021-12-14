@@ -85,7 +85,7 @@ def get_location_updates(api_url, adapter, df):
         delayed(fetch_data)(api_url, adapter, row["sensor_nodes_id"])
         for _, row in tqdm(
             df_adapter.iterrows(),
-            desc=f"Checking last update for adapter: {adapter_name}...",
+            desc=f"Checking last updates for : {adapter_name}...",
             total=df_adapter.shape[0],
         )
     )
@@ -117,8 +117,17 @@ def save_csv_file(csv_path, df):
         df.to_csv(csv_path, columns=keys, index=False)
 
 
-def reduce_repeated_values(outdate_file, update_file):
-    df_outdate = pd.read_csv(outdate_file)
+def reduce_repeated_values(outdate_file_tmp, outdate_file, update_file):
+    """Function to reduce the number of adapter that has updated in some estations. it means that the adapter is
+       working but some station has disappear or there is no update for the station
+
+    Args:
+        outdate_file_tmp (str): Temporal file of out of date locations
+        outdate_file (str): File that contains outdate adapters
+        update_file (str): File that contains update adapters
+    """
+
+    df_outdate = pd.read_csv(outdate_file_tmp)
     df_update = pd.read_csv(update_file)
     updated_adapters = np.unique(df_update["name"].to_numpy())
     df_outdate_new = df_outdate[~df_outdate.name.isin(updated_adapters)]
@@ -188,6 +197,8 @@ def main(
     # Read adapter that has  been already reviewed
     df_reviewed_adapters = pd.read_csv(reviewed_resources_file)
     no_need_reviewed = np.unique(df_reviewed_adapters["adapter_id"].to_numpy())
+    outdate_file_tmp = f"{os.path.splitext(outdate_file)[0]}-tmp.csv"
+
     if source is not None:
         adapters = [a for a in adapters if a["name"] == source]
     for adapter in adapters:
@@ -195,9 +206,9 @@ def main(
             adapter_locations_lu = get_location_updates(api_url, adapter, df)
             if len(adapter_locations_lu) > 0:
                 df_outdate, df_update = apply_rules(days_ago, adapter_locations_lu)
-                save_csv_file(outdate_file, df_outdate)
+                save_csv_file(outdate_file_tmp, df_outdate)
                 save_csv_file(update_file, df_update)
-    reduce_repeated_values(outdate_file, update_file, reviewed_resources_file)
+    reduce_repeated_values(outdate_file_tmp, outdate_file, update_file)
 
 
 if __name__ == "__main__":
