@@ -1,0 +1,11 @@
+version: '3'
+services:
+  foaq_eval:
+    image: openaq/foaq_eval:v1
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+        - ./:/mnt
+    working_dir: /mnt
+    entrypoint: python main.py
