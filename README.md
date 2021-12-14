@@ -33,7 +33,4 @@ docker-compose build
     docker-compose up
 ```
 
-Output: The script will generates two files `data/adapters_update.csv` and `data/adapters_outdate.csv` which can be used to the the evaluations.
-
-
-
+Outputs: `data/adapters_update.csv` and `data/adapters_outdate.csv` which can be used to the evaluations.

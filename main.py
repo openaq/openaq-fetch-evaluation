@@ -14,11 +14,6 @@ import datetime
 import numpy as np
 
 
-# Adapter that's the api are gone
-reviewed_adapters = ["Bosnia2", "Andalucia",
-                     "Kosovo", "Chile - SINCA", "Umhverfisstofnun"]
-
-
 def load_adapters(sources):
     """Load data from json files in ../source folder
 
@@ -54,7 +49,11 @@ def fetch_data(api_url, adapter, sensor_nodes_id):
     try:
         r = requests.get(url, timeout=20)
         data = r.json()
-        if r.status_code == 200 and "results" in data.keys() and len(data["results"]) > 0:
+        if (
+            r.status_code == 200
+            and "results" in data.keys()
+            and len(data["results"]) > 0
+        ):
             item = data["results"][0]
 
             val["locationId"] = item["locationId"]
@@ -122,7 +121,6 @@ def reduce_repeated_values(outdate_file, update_file):
     df_outdate = pd.read_csv(outdate_file)
     df_update = pd.read_csv(update_file)
     updated_adapters = np.unique(df_update["name"].to_numpy())
-    updated_adapters = [*updated_adapters, *reviewed_adapters]
     df_outdate_new = df_outdate[~df_outdate.name.isin(updated_adapters)]
     df_outdate_new.to_csv(outdate_file, index=False)
 
@@ -139,11 +137,20 @@ def reduce_repeated_values(outdate_file, update_file):
     default=15,
     type=int,
 )
-@click.option("--source_folder", help="Source folder for josn files", default="/openaq-fetch/sources")
+@click.option(
+    "--source_folder",
+    help="Source folder for josn files",
+    default="/openaq-fetch/sources",
+)
 @click.option(
     "--adpters_ids_file",
     help="A csv files that was exported from the DB, contains the location id for each adapter.",
     default="/mnt/data/adapters_id.csv",
+)
+@click.option(
+    "--reviewed_resources_file",
+    help="A csv file which the resources has been already reviewed",
+    default="/mnt/data/reviewed_resources.csv",
 )
 @click.option(
     "--outdate_file",
@@ -156,28 +163,41 @@ def reduce_repeated_values(outdate_file, update_file):
     default="/mnt/data/adapters_update.csv",
 )
 @click.option(
-    "--source", help="Use this option to get last update for a particular adapter", default=None
+    "--source",
+    help="Use this option to get last update for a particular adapter",
+    default=None,
 )
 @click.option(
-    "--source", help="Use this option to get last update for a particular adapter", default=None
+    "--source",
+    help="Use this option to get last update for a particular adapter",
+    default=None,
 )
-@click.option("--no_consider", help="List of adapters to do not consider", default="[]")
-def main(api_url, days_ago, source_folder, adpters_ids_file, outdate_file, update_file, source, no_consider):
+def main(
+    api_url,
+    days_ago,
+    source_folder,
+    adpters_ids_file,
+    reviewed_resources_file,
+    outdate_file,
+    update_file,
+    source,
+):
 
     df = pd.read_csv(adpters_ids_file)
     adapters = load_adapters(source_folder)
-    no_consider = json.loads(no_consider)
+    # Read adapter that has  been already reviewed
+    df_reviewed_adapters = pd.read_csv(reviewed_resources_file)
+    no_need_reviewed = np.unique(df_reviewed_adapters["adapter_id"].to_numpy())
     if source is not None:
         adapters = [a for a in adapters if a["name"] == source]
     for adapter in adapters:
-        if adapter["name"] not in no_consider:
+        if adapter["name"] not in no_need_reviewed:
             adapter_locations_lu = get_location_updates(api_url, adapter, df)
             if len(adapter_locations_lu) > 0:
-                df_outdate, df_update = apply_rules(
-                    days_ago, adapter_locations_lu)
+                df_outdate, df_update = apply_rules(days_ago, adapter_locations_lu)
                 save_csv_file(outdate_file, df_outdate)
                 save_csv_file(update_file, df_update)
-    reduce_repeated_values(outdate_file, update_file)
+    reduce_repeated_values(outdate_file, update_file, reviewed_resources_file)
 
 
 if __name__ == "__main__":
