@@ -64,6 +64,8 @@ def fetch_data(api_url, adapter, sensor_nodes_id):
         print(f"Error {e}")
     except requests.exceptions.ReadTimeout as e:
         print(f"Error {e}")
+    except requests.exceptions.ConnectionError as e:
+        print(f"Error {e}")
     adapter_copy.update(val)
     return adapter_copy
 
