@@ -5,6 +5,7 @@
 import os
 import glob
 import json
+from typing import Dict, List, Tuple
 import pandas as pd
 import requests
 from joblib import Parallel, delayed
@@ -14,7 +15,7 @@ import datetime
 import numpy as np
 
 
-def load_adapters(sources):
+def load_adapters(sources: str) -> Dict:
     """Load data from json files in ../source folder
 
     Args:
@@ -32,7 +33,7 @@ def load_adapters(sources):
     return adapters
 
 
-def fetch_data(api_url, adapter, sensor_nodes_id):
+def fetch_data(api_url: str, adapter: Dict, sensor_nodes_id: int) -> Dict:
     """Fetch data from API
 
     Args:
@@ -70,7 +71,7 @@ def fetch_data(api_url, adapter, sensor_nodes_id):
     return adapter_copy
 
 
-def get_location_updates(api_url, adapter, df):
+def get_location_updates(api_url: str, adapter: Dict, df: pd.DataFrame) -> List[Dict]:
     """Parrallel function to make request to the API
 
     Args:
@@ -94,7 +95,7 @@ def get_location_updates(api_url, adapter, df):
     return results
 
 
-def apply_rules(days_ago, adapter_locations_lu):
+def apply_rules(days_ago: int, adapter_locations_lu: Dict) -> Tuple(pd.DataFrame, pd.DataFrame):
     df = pd.DataFrame.from_dict(adapter_locations_lu)
 
     # Get data from last 10 days ago
@@ -111,7 +112,7 @@ def apply_rules(days_ago, adapter_locations_lu):
     return df_outdate, df_update
 
 
-def save_csv_file(csv_path, df):
+def save_csv_file(csv_path: str, df: pd.DataFrame):
     keys = ["name", "last_update", "location", "url", "active", "locationId"]
     if os.path.exists(csv_path):
         df.to_csv(csv_path, mode="a", header=False, columns=keys, index=False)
@@ -119,7 +120,7 @@ def save_csv_file(csv_path, df):
         df.to_csv(csv_path, columns=keys, index=False)
 
 
-def reduce_repeated_values(outdate_file_tmp, outdate_file, update_file):
+def reduce_repeated_values(outdate_file_tmp: str, outdate_file: str, update_file: str):
     """Function to reduce the number of adapter that has updated in some estations. it means that the adapter is
        working but some station has disappear or there is no update for the station
 
@@ -196,7 +197,7 @@ def main(
 
     df = pd.read_csv(adpters_ids_file)
     adapters = load_adapters(source_folder)
-    # Read adapter that has  been already reviewed
+    # Read adapter that has been already reviewed
     df_reviewed_adapters = pd.read_csv(reviewed_resources_file)
     no_need_reviewed = np.unique(df_reviewed_adapters["adapter_id"].to_numpy())
     outdate_file_tmp = f"{os.path.splitext(outdate_file)[0]}-tmp.csv"
